@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- README: tested versions, verify/stop/start/uninstall commands.
 - README: macOS (Apple Silicon) smoke result and troubleshooting for `ghcr.io` `denied` pulls.
 
 ## 0.1.0 (pre-release)

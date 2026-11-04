@@ -9,7 +9,7 @@ Unofficial, experimental Docker Compose adaptation of [Project N.O.M.A.D.](https
 | Environment | Status |
 |---|---|
 | Linux amd64 (GitHub Actions) | CI starts the stack and `GET /api/health` returns `{"status":"ok"}` |
-| macOS 26 / Apple Silicon / Docker Desktop (one report) | Stack starts and `GET /api/health` returns `{"status":"ok"}`; the admin image runs under amd64 emulation. Child apps (Kiwix, Ollama, ...) not tested |
+| macOS 26.7.2 / Apple Silicon / Docker Desktop 4.98.0 (Engine 29.9.2, linux/arm64) (one report) | Stack starts and `GET /api/health` returns `{"status":"ok"}`; the admin image runs under amd64 emulation. Child apps (Kiwix, Ollama, ...) not tested |
 | Intel Mac, other macOS versions | **Not validated.** Reports welcome via issues |
 
 Risks: the stack mounts `docker.sock` and the admin UI has no authentication. Use at your own risk.
@@ -31,6 +31,20 @@ cd project-nomad-macos
 Creates `.env` with random secrets, then runs `docker compose up -d`. UI: http://localhost:8080. Logs (Dozzle): http://localhost:9999. Data: `~/nomad-data/storage` (set `NOMAD_STORAGE_PATH` before the first run to change it).
 
 Update: `git pull && docker compose -p project-nomad pull && docker compose -p project-nomad up -d`.
+
+## Verify, stop, start, uninstall
+```bash
+curl -fsS http://localhost:8080/api/health        # expect {"status":"ok"}
+docker compose -p project-nomad ps
+docker compose -p project-nomad down              # stop (keeps data)
+docker compose -p project-nomad up -d             # start again (run from this directory, needs .env)
+```
+Full uninstall (destructive, deletes database and downloaded content):
+```bash
+docker compose -p project-nomad down -v
+docker ps -a --filter name=nomad_                 # child apps installed from the UI are separate containers; remove them yourself
+rm -f .env && rm -rf ~/nomad-data                 # or your NOMAD_STORAGE_PATH
+```
 
 ## Differences from upstream `install/management_compose.yaml`
 - Storage under `$HOME` instead of `/opt/project-nomad` (the admin relocates child-app mounts from `NOMAD_STORAGE_PATH`).
