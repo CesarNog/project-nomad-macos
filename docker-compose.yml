@@ -1,0 +1,101 @@
+# macOS (Docker Desktop, Apple Silicon/Intel) variant of install/management_compose.yaml.
+# Differences vs upstream:
+#  - storage is a host path under $HOME (NOMAD_STORAGE_PATH) instead of /opt/project-nomad
+#  - mysql/redis use named volumes (bind mounts on virtiofs are slow/fragile for MySQL)
+#  - updater sidecar removed (hardcodes /opt/project-nomad/compose.yml); update with `git pull && docker compose pull`
+#  - disk-collector: ":rslave" removed (unsupported on Docker Desktop); it reports the Docker VM disk, not the Mac disk
+#  - ports bound to 127.0.0.1 (UI has no auth and the stack mounts docker.sock)
+name: project-nomad
+services:
+  admin:
+    image: ghcr.io/crosstalk-solutions/project-nomad:latest
+    pull_policy: always
+    container_name: nomad_admin
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ${NOMAD_STORAGE_PATH:?}:/app/storage
+      - /var/run/docker.sock:/var/run/docker.sock
+      - nomad-update-shared:/app/update-shared
+    environment:
+      - NODE_ENV=production
+      - NOMAD_STORAGE_PATH=${NOMAD_STORAGE_PATH:?}
+      - PORT=8080
+      - LOG_LEVEL=info
+      - APP_KEY=${APP_KEY:?}
+      - HOST=0.0.0.0
+      - URL=http://localhost:8080
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=nomad
+      - DB_USER=nomad_user
+      - DB_PASSWORD=${DB_PASSWORD:?}
+      - DB_NAME=nomad
+      - DB_SSL=false
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DISABLE_COMPRESSION=false
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  dozzle:
+    image: amir20/dozzle:v10.0
+    container_name: nomad_dozzle
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9999:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOZZLE_ENABLE_ACTIONS=false
+      - DOZZLE_ENABLE_SHELL=false
+  mysql:
+    image: mysql:8.0
+    container_name: nomad_mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:?}
+      - MYSQL_DATABASE=nomad
+      - MYSQL_USER=nomad_user
+      - MYSQL_PASSWORD=${DB_PASSWORD:?}
+    volumes:
+      - nomad-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    container_name: nomad_redis
+    restart: unless-stopped
+    volumes:
+      - nomad-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  disk-collector:
+    image: ghcr.io/crosstalk-solutions/project-nomad-disk-collector:latest
+    pull_policy: always
+    container_name: nomad_disk_collector
+    restart: unless-stopped
+    volumes:
+      - /:/host:ro
+      - ${NOMAD_STORAGE_PATH:?}:/storage
+
+volumes:
+  nomad-update-shared:
+  nomad-mysql:
+  nomad-redis:

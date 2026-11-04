@@ -1,0 +1,11 @@
+project-nomad-macos
+Copyright 2026 CesarNog
+
+This product includes software derived from Project N.O.M.A.D.
+(https://github.com/Crosstalk-Solutions/project-nomad), by the Project N.O.M.A.D.
+authors, licensed under the Apache License, Version 2.0.
+
+Modified: install/management_compose.yaml was adapted for macOS / Docker Desktop
+(see the header comment in docker-compose.yml for the list of changes).
+
+This project is not affiliated with or endorsed by Crosstalk Solutions.

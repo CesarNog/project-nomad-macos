@@ -1,0 +1,38 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck install_mac.sh
+      - run: NOMAD_STORAGE_PATH=/tmp/s APP_KEY=0123456789abcdef0123 DB_PASSWORD=x DB_ROOT_PASSWORD=y docker compose config -q
+  smoke-linux-amd64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start stack
+        run: |
+          mkdir -p "$RUNNER_TEMP/nomad-storage/logs"
+          printf 'NOMAD_STORAGE_PATH=%s\nAPP_KEY=%s\nDB_ROOT_PASSWORD=%s\nDB_PASSWORD=%s\n' "$RUNNER_TEMP/nomad-storage" "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" > .env
+          docker compose -p project-nomad up -d
+      - name: Wait for /api/health
+        run: |
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:8080/api/health; then echo; echo healthy; exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Diagnostics
+        if: always()
+        run: |
+          docker compose -p project-nomad ps
+          docker compose -p project-nomad logs --tail=100
+      - name: Stop stack
+        if: always()
+        run: docker compose -p project-nomad down -v
