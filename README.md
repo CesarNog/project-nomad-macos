@@ -9,7 +9,8 @@ Unofficial, experimental Docker Compose adaptation of [Project N.O.M.A.D.](https
 | Environment | Status |
 |---|---|
 | Linux amd64 (GitHub Actions) | CI starts the stack and `GET /api/health` returns `{"status":"ok"}` |
-| macOS / Docker Desktop (Apple Silicon or Intel) | **Not validated.** Reports welcome via issues |
+| macOS 26 / Apple Silicon / Docker Desktop (one report) | Stack starts and `GET /api/health` returns `{"status":"ok"}`; the admin image runs under amd64 emulation. Child apps (Kiwix, Ollama, ...) not tested |
+| Intel Mac, other macOS versions | **Not validated.** Reports welcome via issues |
 
 Risks: the stack mounts `docker.sock` and the admin UI has no authentication. Use at your own risk.
 
@@ -17,6 +18,9 @@ Risks: the stack mounts `docker.sock` and the admin UI has no authentication. Us
 - Docker Desktop with `docker compose` v2
 - Access to `ghcr.io` from the Docker daemon
 - Disk space for the content you choose to download (Wikipedia, maps, AI models)
+
+## Troubleshooting
+- `error from registry: denied` when pulling `ghcr.io/...`, even for public images: a stale `ghcr.io` login in the Docker credential store can cause it. Fix: `docker logout ghcr.io` (re-login later with a valid token if you need private images), then retry.
 
 ## Use
 ```bash
